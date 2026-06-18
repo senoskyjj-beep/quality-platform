@@ -164,6 +164,42 @@ export const SANS_CLAUSES = [
   { ref: 'SANS 10198-4 clause 5.2', topic: 'ICT – fibre optic installation', desc: 'Fibre cable minimum bend radius, splice enclosure, OTDR test requirements', categories: ['ict'] },
   { ref: 'SANS 10198-4 clause 6.1', topic: 'ICT – testing & certification', desc: 'Channel/link testing per TIA-568, test report format, pass/fail criteria', categories: ['ict'] },
   { ref: 'SANS 10198-6 clause 4', topic: 'ICT – earthing of cabling', desc: 'Telecommunications earthing, bonding of racks and containment', categories: ['ict', 'electrical'] },
+
+  // ============ SANRAL Drainage Manual (6th Edition) ============
+  { ref: 'SANRAL Drainage Manual Ch.2', topic: 'Hydrology – runoff estimation', desc: 'Rational method, catchment area, runoff coefficient and rainfall intensity for drainage sizing', categories: ['drainage'] },
+  { ref: 'SANRAL Drainage Manual Ch.3', topic: 'Hydraulics – pipe flow & channels', desc: 'Manning equation, pipe full-flow capacity, open channel freeboard requirements', categories: ['drainage'] },
+  { ref: 'SANRAL Drainage Manual Ch.4 §4.2', topic: 'Culvert – type selection & sizing', desc: 'Culvert hydraulic design, headwater depth, outlet velocity, scour potential', categories: ['drainage', 'earthworks'] },
+  { ref: 'SANRAL Drainage Manual Ch.4 §4.4', topic: 'Culvert – installation', desc: 'Bedding class, backfill compaction, pipe alignment, headwall construction', categories: ['drainage', 'earthworks'] },
+  { ref: 'SANRAL Drainage Manual Ch.4 §4.5', topic: 'Culvert – inlet & outlet protection', desc: 'Apron slab, wingwalls, scour protection at inlet and outlet', categories: ['drainage', 'earthworks'] },
+  { ref: 'SANRAL Drainage Manual Ch.7 §7.2', topic: 'Erosion protection – riprap', desc: 'Rock size, layer thickness, filter layer requirements for riprap protection', categories: ['drainage', 'earthworks'] },
+  { ref: 'SANRAL Drainage Manual Ch.7 §7.3', topic: 'Erosion protection – gabions', desc: 'Wire basket type, rock fill grading, lacing and connection requirements', categories: ['drainage', 'earthworks'] },
+  { ref: 'SANRAL Drainage Manual Ch.7 §7.4', topic: 'Erosion protection – concrete lining', desc: 'Lining thickness, reinforcement, expansion joints, surface finish for lined channels', categories: ['drainage', 'concrete'] },
+  { ref: 'SANRAL Drainage Manual Ch.8 §8.2', topic: 'Stormwater – kerb inlets & gullies', desc: 'Inlet capacity, spacing, gully type selection, trap requirements', categories: ['drainage'] },
+  { ref: 'SANRAL Drainage Manual Ch.8 §8.3', topic: 'Stormwater – retention & detention', desc: 'Retention pond design criteria, outlet control structure, safety requirements', categories: ['drainage'] },
+  { ref: 'SANRAL Drainage Manual Ch.9 §9.2', topic: 'Side drains – construction', desc: 'Roadside drain dimensions, gradient, lining requirements, outfall spacing', categories: ['drainage', 'roads'] },
+  { ref: 'SANRAL Drainage Manual Ch.9 §9.3', topic: 'Subsurface drainage – installation', desc: 'Subsoil drain depth, gradient, geotextile wrap, outlet to daylight requirements', categories: ['drainage', 'earthworks'] },
+
+  // ============ NHBRC Home Building Manual ============
+  { ref: 'NHBRC Part 2.1.1', topic: 'Site investigation & soil report', desc: 'Geotechnical report required before foundation design, soil classification, bearing capacity', categories: ['earthworks', 'concrete'] },
+  { ref: 'NHBRC Part 2.1.2', topic: 'Foundation types – selection', desc: 'Strip, pad, raft and piled foundation selection based on soil conditions and loading', categories: ['concrete', 'piling'] },
+  { ref: 'NHBRC Part 2.1.3', topic: 'Foundation dimensions & depths', desc: 'Minimum foundation depth, width requirements, founding on undisturbed soil', categories: ['concrete', 'earthworks'] },
+  { ref: 'NHBRC Part 2.1.4', topic: 'Foundation concrete & reinforcement', desc: 'Minimum concrete class, reinforcement requirements for various foundation types', categories: ['concrete', 'rebar'] },
+  { ref: 'NHBRC Part 2.2.1', topic: 'Ground floor slab – preparation', desc: 'Subbase compaction, DPM installation, ground preparation before slab pour', categories: ['concrete', 'earthworks'] },
+  { ref: 'NHBRC Part 2.2.2', topic: 'Ground floor slab – construction', desc: 'Slab thickness (min 100 mm), reinforcement mesh, concrete class, curing requirements', categories: ['concrete'] },
+  { ref: 'NHBRC Part 2.2.3', topic: 'Ground floor slab – tolerances', desc: 'Surface level tolerance ±6 mm under 3 m straight edge, crack control', categories: ['concrete'] },
+  { ref: 'NHBRC Part 2.3.1', topic: 'Masonry – materials', desc: 'Approved brick/block types, minimum compressive strength, mortar class requirements', categories: ['brickwork'] },
+  { ref: 'NHBRC Part 2.3.2', topic: 'Masonry – construction', desc: 'Wall thickness, lateral support spacing, lintel bearing, movement joint spacing', categories: ['brickwork'] },
+  { ref: 'NHBRC Part 2.3.3', topic: 'Masonry – waterproofing', desc: 'DPC position, cavity trays, wall ties, external render requirements', categories: ['brickwork'] },
+  { ref: 'NHBRC Part 2.4.1', topic: 'Roof structure – timber', desc: 'Timber quality, truss installation, bracing, connection to wall plates and ring beam', categories: ['brickwork'] },
+  { ref: 'NHBRC Part 2.4.2', topic: 'Roof covering – installation', desc: 'Roof cladding fixing, lap requirements, ridge and valley detailing, waterproofing', categories: ['general'] },
+  { ref: 'NHBRC Part 3.1.1', topic: 'Drainage – above ground', desc: 'PVC pipe grades, fixing and support, air admittance valves, access points', categories: ['plumbing', 'drainage'] },
+  { ref: 'NHBRC Part 3.1.2', topic: 'Drainage – underground', desc: 'Minimum cover depths, bedding, pipe jointing, inspection eyes spacing', categories: ['plumbing', 'drainage'] },
+  { ref: 'NHBRC Part 3.1.3', topic: 'Drainage – testing', desc: 'Water and air test requirements, test pressure, duration and acceptance criteria', categories: ['plumbing'] },
+  { ref: 'NHBRC Part 3.2.1', topic: 'Water supply – pipe materials & joints', desc: 'CPVC, HDPE, copper pipe approvals, joint types, pressure class for cold/hot water', categories: ['plumbing'] },
+  { ref: 'NHBRC Part 3.2.2', topic: 'Water supply – geysers & pressure', desc: 'Geyser installation height, pressure limiting valve, drip tray, discharge to outside', categories: ['plumbing'] },
+  { ref: 'NHBRC Part 3.3.1', topic: 'Electrical – installation compliance', desc: 'All electrical work by registered person, COC required, SANS 10142-1 applies throughout', categories: ['electrical'] },
+  { ref: 'NHBRC Part 3.3.2', topic: 'Electrical – DB & earthing', desc: 'DB location, main earth, bonding of water pipes, compliance with SANS 10142-1', categories: ['electrical'] },
+  { ref: 'NHBRC Part 3.4.1', topic: 'Fire protection – residential', desc: 'Smoke detectors required in all sleeping areas, heat detector in kitchen, interconnection', categories: ['fire'] },
 ];
 
 export const COMMON_DEFECTS = [
@@ -227,6 +263,19 @@ export const COMMON_DEFECTS = [
   { name: 'Cable test failed (ICT)', category: 'ict', suggested_clause: 'SANS 10198-4 clause 6.1', tip: 'Channel/link test result FAIL — check terminations, bend radius or damage' },
   { name: 'Bend radius violation (fibre)', category: 'ict', suggested_clause: 'SANS 10198-4 clause 5.2', tip: 'Fibre optic cable bent beyond minimum radius — potential signal loss' },
   { name: 'Cable tray overfilled', category: 'ict', suggested_clause: 'SANS 10198-4 clause 5.1', tip: 'Cable tray fill ratio exceeds recommended 50% capacity' },
+  // SANRAL / Drainage structures
+  { name: 'Culvert misaligned', category: 'drainage', suggested_clause: 'SANRAL Drainage Manual Ch.4 §4.4', tip: 'Culvert pipe not on design alignment or gradient' },
+  { name: 'Culvert outlet unprotected', category: 'drainage', suggested_clause: 'SANRAL Drainage Manual Ch.4 §4.5', tip: 'No apron or scour protection at culvert outlet' },
+  { name: 'Riprap undersized / absent', category: 'drainage', suggested_clause: 'SANRAL Drainage Manual Ch.7 §7.2', tip: 'Rock size too small or riprap layer not placed at erosion-prone area' },
+  { name: 'Gabion lacing defective', category: 'drainage', suggested_clause: 'SANRAL Drainage Manual Ch.7 §7.3', tip: 'Gabion basket lacing gaps > 100 mm or connection wires missing' },
+  { name: 'Side drain gradient insufficient', category: 'drainage', suggested_clause: 'SANRAL Drainage Manual Ch.9 §9.2', tip: 'Roadside drain gradient below minimum — ponding risk' },
+  // NHBRC
+  { name: 'No geotechnical report', category: 'earthworks', suggested_clause: 'NHBRC Part 2.1.1', tip: 'Foundation design commenced without approved site investigation report' },
+  { name: 'Foundation too shallow', category: 'concrete', suggested_clause: 'NHBRC Part 2.1.3', tip: 'Foundation depth does not reach stable, undisturbed soil' },
+  { name: 'DPM missing under slab', category: 'concrete', suggested_clause: 'NHBRC Part 2.2.1', tip: 'Damp-proof membrane not laid before ground floor slab pour' },
+  { name: 'Slab level tolerance exceeded', category: 'concrete', suggested_clause: 'NHBRC Part 2.2.3', tip: 'Floor slab surface deviation exceeds ±6 mm under 3 m straight edge' },
+  { name: 'Smoke detector missing', category: 'fire', suggested_clause: 'NHBRC Part 3.4.1', tip: 'Smoke detector absent in sleeping area or required zone' },
+  { name: 'Geyser installation non-compliant', category: 'plumbing', suggested_clause: 'NHBRC Part 3.2.2', tip: 'No pressure limiting valve, no drip tray, or discharge not directed outside' },
 ];
 
 export function getClausesForCategory(categories) {
@@ -257,6 +306,8 @@ export function categoriesForInspectionType(type) {
   if (t.includes('fire') || t.includes('sprinkler') || t.includes('suppression')) return ['fire'];
   if (t.includes('hvac') || t.includes('duct') || t.includes('air') || t.includes('mechanical')) return ['hvac'];
   if (t.includes('ict') || t.includes('cni') || t.includes('fibre') || t.includes('data') || t.includes('network')) return ['ict'];
+  if (t.includes('culvert') || t.includes('riprap') || t.includes('gabion') || t.includes('erosion') || t.includes('side drain')) return ['drainage', 'earthworks'];
+  if (t.includes('nhbrc') || t.includes('slab') || t.includes('floor slab')) return ['concrete', 'earthworks'];
   return ['concrete'];
 }
 
