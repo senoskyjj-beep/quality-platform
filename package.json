@@ -1,0 +1,29 @@
+{
+  "name": "qa-portal-v2",
+  "version": "2.0.0",
+  "description": "QA Inspection Portal V2 - Booking-First - Cape Town Logistics Warehouse Facility (EC0148)",
+  "homepage": "https://senoskyjj-beep.github.io/quality-platform",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "xlsx": "^0.18.5",
+    "file-saver": "^2.0.5",
+    "docx": "^8.5.0",
+    "recharts": "^2.10.3"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "deploy": "npm run build && gh-pages -d build",
+    "predeploy": "npm run build"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.0"
+  },
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+  }
+}
