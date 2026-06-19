@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { styles, colors } from '../styles';
 import { exportToExcel } from '../excelExport';
+
+const BOOKING_URL = window.location.origin + window.location.pathname + '?form=booking';
 
 export default function HomeTab({ inspections, findings, ncrs, cubes, setupData, badges }) {
   const today = new Date().toISOString().split('T')[0];
@@ -37,12 +39,39 @@ export default function HomeTab({ inspections, findings, ncrs, cubes, setupData,
 
       <div style={styles.card}>
         <div style={styles.sectionTitle}>Quick Actions</div>
-        <button style={styles.btn}
-          onClick={() => exportToExcel({ project: setupData.project, inspections, findings, ncrs, cubes })}>
-          📥 Download Excel Workbook
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <button style={styles.btn}
+            onClick={() => exportToExcel({ project: setupData.project, inspections, findings, ncrs, cubes })}>
+            📥 Download Excel Workbook
+          </button>
+          <BookingLinkButton />
+        </div>
       </div>
     </>
+  );
+}
+
+function BookingLinkButton() {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(BOOKING_URL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      prompt('Copy this link to share with engineers/foremen:', BOOKING_URL);
+    }
+  };
+  return (
+    <div>
+      <button style={{ ...styles.btnSec, display: 'block', marginBottom: 6 }} onClick={copy}>
+        {copied ? '✅ Link Copied!' : '🔗 Copy Booking Link'}
+      </button>
+      <div style={{ fontSize: 11, color: colors.greyDark, maxWidth: 260, lineHeight: 1.5 }}>
+        Share this link with engineers &amp; foremen — they fill in the booking on their phone,
+        it goes straight into Today's Bookings.
+      </div>
+    </div>
   );
 }
 
