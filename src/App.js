@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api, startRetryLoop, getPendingCount, manualRetryPending } from './api';
 import { styles, colors } from './styles';
 import { APP_TITLE, PROJECT_NAME, PROJECT_NO, SCRIPT_URL } from './config';
+import { isNcrOpen, isFindingOpen } from './statusHelpers';
 
 import HomeTab from './tabs/HomeTab';
 import TodayTab from './tabs/TodayTab';
@@ -42,24 +43,34 @@ export default function App() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [setupR, inspR, findR, ncrR, cubeR] = await Promise.all([
-        api.getSetup(),
-        api.listInspections(),
-        api.listFindings(),
-        api.listNCRs(),
-        api.listCubes(),
-      ]);
-      setSetupData({ setup: setupR.setup, phones: setupR.phones, project: setupR.project });
-      setInspections(inspR.records || []);
-      setFindings(findR.records || []);
-      setNcrs(ncrR.records || []);
-      setCubes(cubeR.records || []);
-      setConnected(true);
-    } catch (e) {
-      setError(e.message);
+    // allSettled so one failing endpoint doesn't wipe out the other four
+    // datasets that loaded fine — each is applied independently.
+    const [setupR, inspR, findR, ncrR, cubeR] = await Promise.allSettled([
+      api.getSetup(),
+      api.listInspections(),
+      api.listFindings(),
+      api.listNCRs(),
+      api.listCubes(),
+    ]);
+    const failed = [];
+    if (setupR.status === 'fulfilled') {
+      setSetupData({ setup: setupR.value.setup || {}, phones: setupR.value.phones || {}, project: setupR.value.project || {} });
+    } else failed.push('setup');
+    if (inspR.status === 'fulfilled') setInspections(inspR.value.records || []); else failed.push('bookings');
+    if (findR.status === 'fulfilled') setFindings(findR.value.records || []); else failed.push('findings');
+    if (ncrR.status === 'fulfilled') setNcrs(ncrR.value.records || []); else failed.push('NCRs');
+    if (cubeR.status === 'fulfilled') setCubes(cubeR.value.records || []); else failed.push('cubes');
+
+    if (failed.length === 5) {
+      setError('Could not reach the server. Showing offline/last known data.');
       setConnected(false);
-    } finally { setLoading(false); }
+    } else if (failed.length > 0) {
+      setError(`Couldn't refresh: ${failed.join(', ')}. The rest loaded fine.`);
+      setConnected(true);
+    } else {
+      setConnected(true);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -77,8 +88,8 @@ export default function App() {
 
   const refresh = () => loadAll();
 
-  const openCount = ncrs.filter(n => n.status === 'Open' || n.status === 'Draft' || n.status === 'In progress').length;
-  const findingsOpen = findings.filter(f => f.status !== 'Closed' && f.status !== 'Verified').length;
+  const openCount = ncrs.filter(n => isNcrOpen(n.status)).length;
+  const findingsOpen = findings.filter(f => isFindingOpen(f.status)).length;
   const cubesAwaiting28 = cubes.filter(c => !c.result_28).length;
   const badges = { ncr: openCount, findings: findingsOpen, cubes: cubesAwaiting28 };
 
@@ -126,7 +137,7 @@ export default function App() {
             <strong>Notice:</strong> {error}
           </div>
         )}
-        {loading && !setupData.setup.Inspectors && (
+        {loading && !(setupData.setup && setupData.setup.Inspectors) && (
           <div style={styles.card}>Loading data from server…</div>
         )}
 

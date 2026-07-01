@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { styles, colors } from '../styles';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { isNcrOpen, isFindingOpen } from '../statusHelpers';
 
 const COLORS = [colors.greenDark, colors.orangeDark, colors.redDark, colors.purple, '#2E75B6'];
 
@@ -53,10 +54,10 @@ export default function DashboardTab({ inspections, findings, ncrs, cubes }) {
         <div style={styles.sectionTitle}>2. Findings & NCRs</div>
         <div style={styles.kpiGrid}>
           <Kpi label="Findings Total" value={findings.length} />
-          <Kpi label="Findings Open" value={findings.filter(f => f.status !== 'Closed' && f.status !== 'Verified').length} color={colors.orangeDark} />
+          <Kpi label="Findings Open" value={findings.filter(f => isFindingOpen(f.status)).length} color={colors.orangeDark} />
           <Kpi label="Findings → NCR" value={findings.filter(f => f.promoted_to_ncr === '1').length} />
           <Kpi label="NCRs Total" value={ncrs.length} />
-          <Kpi label="NCRs Open" value={ncrs.filter(n => n.status === 'Open' || n.status === 'In progress').length} color={colors.redDark} />
+          <Kpi label="NCRs Open" value={ncrs.filter(n => isNcrOpen(n.status)).length} color={colors.redDark} />
         </div>
       </div>
 

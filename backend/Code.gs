@@ -703,7 +703,7 @@ function getDashboard() {
     },
     ncrs: {
       total: ncrs.length,
-      open: ncrs.filter(n => n.status === 'Open').length,
+      open: ncrs.filter(n => n.status === 'Open' || n.status === 'Draft').length,
       in_progress: ncrs.filter(n => n.status === 'In progress').length,
       closed: ncrs.filter(n => n.status === 'Closed' || n.status === 'Verified').length,
     },

@@ -5,8 +5,15 @@ import { parseITNFiles } from '../itnParser';
 import { categoriesForInspectionType, getClausesForCategory, getDefectsForCategory, suggestClauseForDefect } from '../data/sansClauses';
 import { generateNCR } from '../ncrGenerator';
 
+function shiftDate(dateStr, delta) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return d.toISOString().split('T')[0];
+}
+
 export default function TodayTab({ inspections, setInspections, findings, setFindings, ncrs, setNcrs, cubes, setCubes, setupData, refresh }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showAllDates, setShowAllDates] = useState(false);
   const [showNewBooking, setShowNewBooking] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
   const [editingFinding, setEditingFinding] = useState(null);
@@ -16,21 +23,36 @@ export default function TodayTab({ inspections, setInspections, findings, setFin
   const [uploadingITN, setUploadingITN] = useState(false);
 
   const setup = setupData.setup || {};
-  const dayBookings = useMemo(() =>
-    inspections.filter(i => i.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || '')),
-    [inspections, selectedDate]
-  );
+  const dayBookings = useMemo(() => {
+    const list = showAllDates ? inspections.slice() : inspections.filter(i => i.date === selectedDate);
+    return list.sort((a, b) => showAllDates
+      ? ((b.date || '').localeCompare(a.date || '') || (a.time || '').localeCompare(b.time || ''))
+      : (a.time || '').localeCompare(b.time || ''));
+  }, [inspections, selectedDate, showAllDates]);
 
   const handleITNUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     setUploadingITN(true);
     try {
-      const records = await parseITNFiles(files);
-      if (records.length === 0) { alert('No rows found in files'); return; }
+      const { records, warnings } = await parseITNFiles(files);
+      if (records.length === 0) {
+        alert('No rows found in files.' + (warnings.length ? '\n' + warnings.join('\n') : ' Check the filename matches the expected I&TN format.'));
+        return;
+      }
       const r = await api.bulkSaveInspections(records);
       if (r && r.results) {
-        alert(`Uploaded ${r.results.filter(x => x.ok).length} rows`);
+        const ok = r.results.filter(x => x.ok).length;
+        const failed = r.results.filter(x => !x.ok);
+        let msg = `Uploaded ${ok} of ${r.results.length} row(s).`;
+        if (warnings.length > 0) msg += `\n⚠ ` + warnings.join('\n⚠ ');
+        if (failed.length > 0) {
+          msg += `\n${failed.length} row(s) failed:\n` + failed.slice(0, 5)
+            .map(f => `• ${(f.record && (f.record.item_description || f.record.building)) || '(row)'}: ${f.error}`)
+            .join('\n');
+          if (failed.length > 5) msg += `\n…and ${failed.length - 5} more.`;
+        }
+        alert(msg);
         refresh();
       }
     } catch (err) { alert('Upload failed: ' + err.message); }
@@ -43,8 +65,16 @@ export default function TodayTab({ inspections, setInspections, findings, setFin
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
             <label style={styles.label}>Date</label>
-            <input type="date" style={{ ...styles.input, width: 180 }} value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)} />
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button style={styles.btnSec} disabled={showAllDates}
+                onClick={() => setSelectedDate(d => shiftDate(d, -1))}>‹</button>
+              <input type="date" style={{ ...styles.input, width: 160 }} value={selectedDate} disabled={showAllDates}
+                onChange={e => setSelectedDate(e.target.value)} />
+              <button style={styles.btnSec} disabled={showAllDates}
+                onClick={() => setSelectedDate(d => shiftDate(d, 1))}>›</button>
+              <button style={styles.btnSec} disabled={showAllDates}
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}>Today</button>
+            </div>
           </div>
           <div style={{ alignSelf: 'flex-end' }}>
             <button style={styles.btn} onClick={() => setShowNewBooking(true)}>+ New Booking</button>
@@ -55,6 +85,10 @@ export default function TodayTab({ inspections, setInspections, findings, setFin
               <input type="file" multiple accept=".xlsx" onChange={handleITNUpload} style={{ display: 'none' }} />
             </label>
           </div>
+          <label style={{ alignSelf: 'flex-end', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+            <input type="checkbox" checked={showAllDates} onChange={e => setShowAllDates(e.target.checked)} />
+            Show all bookings (any date)
+          </label>
           <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: 13, color: colors.greyDark }}>
             {dayBookings.length} booking(s)
           </div>
@@ -65,13 +99,15 @@ export default function TodayTab({ inspections, setInspections, findings, setFin
       {dayBookings.length === 0 && (
         <div style={styles.card}>
           <p style={{ color: colors.greyDark, textAlign: 'center' }}>
-            No bookings for {selectedDate}. Tap <b>+ New Booking</b> to add one from the engineer's WhatsApp, or <b>Upload I&TN xlsx</b>.
+            {showAllDates ? 'No bookings found at all yet.' : `No bookings for ${selectedDate}.`} Tap <b>+ New Booking</b> to add one from the engineer's WhatsApp, or <b>Upload I&TN xlsx</b>.
+            {!showAllDates && <> Can't find a booking? Tick <b>Show all bookings</b> above.</>}
           </p>
         </div>
       )}
 
       {dayBookings.map(b => (
         <BookingCard key={b.id} booking={b}
+          showDate={showAllDates}
           findings={findings.filter(f => f.linked_inspection_id === b.id)}
           ncrs={ncrs.filter(n => n.linked_inspection_id === b.id)}
           cubes={cubes.filter(c => c.linked_inspection_id === b.id)}
@@ -92,6 +128,12 @@ export default function TodayTab({ inspections, setInspections, findings, setFin
             severity: 'Minor', status: 'Draft' })}
           onAddDoc={() => setEditingDoc({ linked_type: 'Inspection', linked_id: b.id,
             doc_type: 'Cube test certificate', uploaded_by_role: 'Quality Inspector (Joshua)' })}
+          onAddCube={() => {
+            const existingCubes = cubes.filter(c => c.linked_inspection_id === b.id);
+            if (existingCubes.length > 0) setEditingCube(existingCubes[0]);
+            else setEditingCube({ linked_inspection_id: b.id, cast_date: b.date, building: b.building,
+              area: b.area, element_location: b.item_description, notes: 'Manually added from booking' });
+          }}
           onEditFinding={(f) => setEditingFinding(f)}
           onEditNCR={(n) => setEditingNCR(n)}
           onEditCube={(c) => setEditingCube(c)}
@@ -167,8 +209,7 @@ export default function TodayTab({ inspections, setInspections, findings, setFin
 }
 
 // ================= BookingCard =================
-function BookingCard({ booking, findings, ncrs, cubes, setup, onSetStatus, onAddFinding, onAddNCR, onAddDoc, onEditFinding, onEditNCR, onEditCube, onEditBooking }) {
-  const [showStatusOptions, setShowStatusOptions] = useState(false);
+function BookingCard({ booking, showDate, findings, ncrs, cubes, setup, onSetStatus, onAddFinding, onAddNCR, onAddDoc, onAddCube, onEditFinding, onEditNCR, onEditCube, onEditBooking }) {
   const [statusToConfirm, setStatusToConfirm] = useState(null);
   const [reason, setReason] = useState('');
 
@@ -176,12 +217,17 @@ function BookingCard({ booking, findings, ncrs, cubes, setup, onSetStatus, onAdd
              booking.status === 'Conformant' && findings.length > 0 ? '#FFFCEB' :
              !booking.status ? '#F8F0FF' : 'white';
 
+  const handleStatusChange = (next) => {
+    if (!next || next === 'Conformant') onSetStatus(next, '');
+    else setStatusToConfirm(next);
+  };
+
   return (
     <div style={{ ...styles.card, background: bg }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontSize: 12, color: colors.greyDark }}>
-            {booking.time || '--:--'} · I&TN {booking.itn_no || '—'} / Item {booking.item_no || '—'}
+            {showDate && <>{booking.date} · </>}{booking.time || '--:--'} · I&TN {booking.itn_no || '—'} / Item {booking.item_no || '—'}
           </div>
           <div style={{ fontSize: 15, fontWeight: 600, marginTop: 2 }}>
             {booking.building} {booking.area ? '· ' + booking.area : ''}
@@ -210,34 +256,16 @@ function BookingCard({ booking, findings, ncrs, cubes, setup, onSetStatus, onAdd
         </div>
       )}
 
-      {/* Action buttons row */}
-      <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {!showStatusOptions ? (
-          <button style={{ ...styles.btnSm, background: 'white', color: colors.navy, border: `1px solid ${colors.navy}` }}
-            onClick={() => setShowStatusOptions(true)}>Set Status</button>
-        ) : (
-          <>
-            <button style={{ ...styles.btnSm, background: colors.greenDark, color: 'white' }}
-              onClick={() => { onSetStatus('Conformant', ''); setShowStatusOptions(false); }}>✓ Conformant</button>
-            <button style={{ ...styles.btnSm, background: colors.redDark, color: 'white' }}
-              onClick={() => setStatusToConfirm('Nonconformant')}>✗ Nonconf</button>
-            <button style={{ ...styles.btnSm, background: colors.orangeDark, color: 'white' }}
-              onClick={() => setStatusToConfirm('Cancelled')}>● Cancelled</button>
-            <button style={{ ...styles.btnSm, background: colors.purple, color: 'white' }}
-              onClick={() => setStatusToConfirm('Rejected')}>⊘ Rejected</button>
-            <button style={{ ...styles.btnSm, background: 'white', color: '#888', border: '1px solid #ccc' }}
-              onClick={() => setShowStatusOptions(false)}>cancel</button>
-          </>
-        )}
-
-        <button style={{ ...styles.btnSm, background: colors.yellow, color: '#806010', border: '1px solid #E8C547' }}
-          onClick={onAddFinding}>⚠ Add Finding</button>
-        <button style={{ ...styles.btnSm, background: colors.red, color: colors.redDark, border: `1px solid ${colors.redDark}` }}
-          onClick={onAddNCR}>📋 Raise NCR</button>
-        <button style={{ ...styles.btnSm, background: colors.green, color: colors.greenDark, border: `1px solid ${colors.greenDark}` }}
-          onClick={onAddDoc}>📎 Upload Doc</button>
-        <button style={{ ...styles.btnSm, background: 'white', color: '#666', border: '1px solid #ccc' }}
-          onClick={onEditBooking}>✎ Edit Booking</button>
+      {/* Status — always-visible dropdown */}
+      <div style={{ marginTop: 12, maxWidth: 240 }}>
+        <label style={styles.label}>Status</label>
+        <select style={styles.input} value={booking.status || ''} onChange={e => handleStatusChange(e.target.value)}>
+          <option value="">Pending</option>
+          <option value="Conformant">✓ Conformant</option>
+          <option value="Nonconformant">✗ Nonconformant</option>
+          <option value="Cancelled">● Cancelled</option>
+          <option value="Rejected">⊘ Rejected</option>
+        </select>
       </div>
 
       {statusToConfirm && (
@@ -250,12 +278,26 @@ function BookingCard({ booking, findings, ncrs, cubes, setup, onSetStatus, onAdd
             {statusToConfirm === 'Nonconformant' && ['Finding raised — see linked record', 'NCR raised — see linked record', 'Awaiting close-out', 'Other'].map(r => <option key={r}>{r}</option>)}
           </select>
           <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-            <button style={styles.btnSm} onClick={() => { onSetStatus(statusToConfirm, reason); setStatusToConfirm(null); setShowStatusOptions(false); setReason(''); }}>Confirm</button>
+            <button style={styles.btnSm} onClick={() => { onSetStatus(statusToConfirm, reason); setStatusToConfirm(null); setReason(''); }}>Confirm</button>
             <button style={{ ...styles.btnSm, background: 'white', color: '#666', border: '1px solid #ccc' }}
               onClick={() => { setStatusToConfirm(null); setReason(''); }}>Cancel</button>
           </div>
         </div>
       )}
+
+      {/* Action buttons row */}
+      <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button style={{ ...styles.btnSm, background: colors.yellow, color: '#806010', border: '1px solid #E8C547' }}
+          onClick={onAddFinding}>⚠ Add Finding</button>
+        <button style={{ ...styles.btnSm, background: colors.red, color: colors.redDark, border: `1px solid ${colors.redDark}` }}
+          onClick={onAddNCR}>📋 Raise NCR</button>
+        <button style={{ ...styles.btnSm, background: colors.lightBlue, color: colors.navy, border: `1px solid ${colors.navy}` }}
+          onClick={onAddCube}>🧪 {cubes.length > 0 ? 'Edit Cube' : 'Add Cube'}</button>
+        <button style={{ ...styles.btnSm, background: colors.green, color: colors.greenDark, border: `1px solid ${colors.greenDark}` }}
+          onClick={onAddDoc}>📎 Upload Doc</button>
+        <button style={{ ...styles.btnSm, background: 'white', color: '#666', border: '1px solid #ccc' }}
+          onClick={onEditBooking}>✎ Edit Booking</button>
+      </div>
 
       {/* Linked records */}
       {(findings.length > 0 || ncrs.length > 0 || cubes.length > 0) && (
@@ -288,7 +330,13 @@ function BookingCard({ booking, findings, ncrs, cubes, setup, onSetStatus, onAdd
 // ================= BookingForm =================
 function BookingForm({ record, setup, onClose, onSave }) {
   const [r, setR] = useState(record);
+  const [saving, setSaving] = useState(false);
   const u = (k, v) => setR({ ...r, [k]: v });
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(r); } finally { setSaving(false); }
+  };
   return (
     <Modal title={record.id ? 'Edit Booking' : 'New Booking (from WhatsApp)'} onClose={onClose}>
       <Grid2>
@@ -310,7 +358,7 @@ function BookingForm({ record, setup, onClose, onSave }) {
         <S label="Employer Rep" value={r.employer_rep || ''} options={setup.EmployerReps} onChange={v => u('employer_rep', v)} />
         <F label="Requested by" value={r.requested_by || ''} onChange={v => u('requested_by', v)} />
       </Grid2>
-      <Buttons onClose={onClose} onSave={() => onSave(r)} />
+      <Buttons onClose={onClose} onSave={handleSave} saving={saving} />
     </Modal>
   );
 }
@@ -318,7 +366,19 @@ function BookingForm({ record, setup, onClose, onSave }) {
 // ================= FindingForm =================
 function FindingForm({ record, setup, ncrs, onClose, onSave, onPromote }) {
   const [r, setR] = useState(record);
+  const [saving, setSaving] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const u = (k, v) => setR({ ...r, [k]: v });
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(r); } finally { setSaving(false); }
+  };
+  const handlePromote = async () => {
+    if (promoting) return;
+    setPromoting(true);
+    try { await onPromote(r.id, 'Quality Inspector (Joshua)', 'Joshua Senosky'); } finally { setPromoting(false); }
+  };
   const cats = categoriesForInspectionType(r.inspection_type);
   const defects = getDefectsForCategory(cats);
   const clauses = getClausesForCategory(cats);
@@ -368,11 +428,10 @@ function FindingForm({ record, setup, ncrs, onClose, onSave, onPromote }) {
 
       <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button style={styles.btnSec} onClick={onClose}>Cancel</button>
-        <button style={styles.btnSec} onClick={() => onSave(r)}>💾 Save Finding</button>
+        <button style={styles.btnSec} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : '💾 Save Finding'}</button>
         {r.id && r.promoted_to_ncr !== '1' && (
-          <button style={styles.btn}
-            onClick={() => onPromote(r.id, 'Quality Inspector (Joshua)', 'Joshua Senosky')}>
-            ↗ Promote to NCR
+          <button style={styles.btn} onClick={handlePromote} disabled={promoting}>
+            {promoting ? 'Promoting…' : '↗ Promote to NCR'}
           </button>
         )}
       </div>
@@ -384,7 +443,13 @@ function FindingForm({ record, setup, ncrs, onClose, onSave, onPromote }) {
 function NCRForm({ record, setup, onClose, onSave }) {
   const [r, setR] = useState(record);
   const [photos, setPhotos] = useState([]);
+  const [saving, setSaving] = useState(false);
   const u = (k, v) => setR({ ...r, [k]: v });
+  const handleSave = async (generateWord) => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(r, generateWord, photos); } finally { setSaving(false); }
+  };
   const cats = categoriesForInspectionType(r.inspection_type);
   const clauses = getClausesForCategory(cats);
 
@@ -456,8 +521,8 @@ function NCRForm({ record, setup, onClose, onSave }) {
 
       <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button style={styles.btnSec} onClick={onClose}>Cancel</button>
-        <button style={styles.btnSec} onClick={() => onSave(r, false, photos)}>💾 Save Only</button>
-        <button style={styles.btn} onClick={() => onSave(r, true, photos)}>💾 Save & Generate Word NCR</button>
+        <button style={styles.btnSec} onClick={() => handleSave(false)} disabled={saving}>💾 Save Only</button>
+        <button style={styles.btn} onClick={() => handleSave(true)} disabled={saving}>{saving ? 'Saving…' : '💾 Save & Generate Word NCR'}</button>
       </div>
     </Modal>
   );
@@ -466,7 +531,13 @@ function NCRForm({ record, setup, onClose, onSave }) {
 // ================= CubeForm =================
 function CubeForm({ record, setup, onClose, onSave }) {
   const [r, setR] = useState(record);
+  const [saving, setSaving] = useState(false);
   const u = (k, v) => setR({ ...r, [k]: v });
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(r); } finally { setSaving(false); }
+  };
   return (
     <Modal title={record.id ? 'Edit Cube' : '🧪 Cube Record'} onClose={onClose}>
       <div style={styles.prefilledBanner}>
@@ -494,7 +565,7 @@ function CubeForm({ record, setup, onClose, onSave }) {
         <F label="Lab / Cert Ref" value={r.cert_ref || ''} onChange={v => u('cert_ref', v)} />
       </Grid2>
       <F label="Notes" value={r.notes || ''} onChange={v => u('notes', v)} textarea fullWidth />
-      <Buttons onClose={onClose} onSave={() => onSave(r)} />
+      <Buttons onClose={onClose} onSave={handleSave} saving={saving} />
     </Modal>
   );
 }
@@ -503,7 +574,13 @@ function CubeForm({ record, setup, onClose, onSave }) {
 function DocForm({ record, setup, onClose, onSave }) {
   const [r, setR] = useState(record);
   const [file, setFile] = useState(null);
+  const [saving, setSaving] = useState(false);
   const u = (k, v) => setR({ ...r, [k]: v });
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(r); } finally { setSaving(false); }
+  };
 
   const handleFile = (e) => {
     const f = e.target.files[0];
@@ -530,7 +607,7 @@ function DocForm({ record, setup, onClose, onSave }) {
         <input type="file" accept="image/*,application/pdf" onChange={handleFile} />
         {file && <div style={{ marginTop: 6, fontSize: 12, color: colors.greenDark }}>✓ {file.name}</div>}
       </div>
-      <Buttons onClose={onClose} onSave={() => onSave(r)} saveDisabled={!r.base64_data} />
+      <Buttons onClose={onClose} onSave={handleSave} saveDisabled={!r.base64_data} saving={saving} />
     </Modal>
   );
 }
@@ -570,11 +647,11 @@ function S({ label, value, options, onChange }) {
     </div>
   );
 }
-function Buttons({ onClose, onSave, saveDisabled }) {
+function Buttons({ onClose, onSave, saveDisabled, saving }) {
   return (
     <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
       <button style={styles.btnSec} onClick={onClose}>Cancel</button>
-      <button style={styles.btn} onClick={onSave} disabled={saveDisabled}>💾 Save</button>
+      <button style={styles.btn} onClick={onSave} disabled={saveDisabled || saving}>{saving ? 'Saving…' : '💾 Save'}</button>
     </div>
   );
 }

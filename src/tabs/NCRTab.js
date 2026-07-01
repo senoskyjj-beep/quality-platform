@@ -1,8 +1,9 @@
 import React from 'react';
 import { styles, colors, statBadge } from '../styles';
+import { isNcrOpen } from '../statusHelpers';
 
 export default function NCRTab({ ncrs, inspections }) {
-  const openCount = ncrs.filter(n => n.status === 'Open' || n.status === 'In progress' || n.status === 'Draft').length;
+  const openCount = ncrs.filter(n => isNcrOpen(n.status)).length;
   return (
     <>
       <div style={styles.card}>
@@ -32,9 +33,14 @@ export default function NCRTab({ ncrs, inspections }) {
             <tbody>
               {ncrs.map(n => {
                 const insp = inspections.find(i => i.id === n.linked_inspection_id);
-                const days = n.date_raised
-                  ? Math.round((new Date(n.actual_closeout || new Date()) - new Date(n.date_raised)) / 86400000)
-                  : '';
+                let days = '';
+                if (n.date_raised) {
+                  const raised = new Date(n.date_raised);
+                  const closed = n.actual_closeout ? new Date(n.actual_closeout) : new Date();
+                  const diff = Math.round((closed - raised) / 86400000);
+                  days = isNaN(diff) ? '—' : diff;
+                }
+                const negative = typeof days === 'number' && days < 0;
                 return (
                   <tr key={n.id}>
                     <td style={styles.td}><b>{n.ncr_no || '—'}</b></td>
@@ -44,7 +50,10 @@ export default function NCRTab({ ncrs, inspections }) {
                     <td style={styles.td}>{n.building}</td>
                     <td style={styles.td}>{n.severity}</td>
                     <td style={styles.td}><span style={statBadge(n.status || 'Draft')}>{n.status || 'Draft'}</span></td>
-                    <td style={styles.td}>{days}</td>
+                    <td style={{ ...styles.td, color: negative ? colors.redDark : undefined, fontWeight: negative ? 700 : undefined }}
+                      title={negative ? 'Close-out date is before the raised date — check for a data-entry error' : undefined}>
+                      {negative ? `⚠ ${days}` : days}
+                    </td>
                   </tr>
                 );
               })}

@@ -1,12 +1,13 @@
 import React from 'react';
 import { styles, colors, statBadge } from '../styles';
+import { isFindingOpen } from '../statusHelpers';
 
 export default function FindingsTab({ findings, inspections }) {
   return (
     <>
       <div style={styles.card}>
         <div style={styles.banner}>
-          ⚠ {findings.length} findings · {findings.filter(f => f.status !== 'Closed').length} open · {findings.filter(f => f.promoted_to_ncr === '1').length} promoted to NCR
+          ⚠ {findings.length} findings · {findings.filter(f => isFindingOpen(f.status)).length} open · {findings.filter(f => f.promoted_to_ncr === '1').length} promoted to NCR
         </div>
         <p style={{ fontSize: 12, color: colors.greyDark }}>
           Add new findings from the <b>Today's Bookings</b> tab — tap "⚠ Add Finding" on any booking row.

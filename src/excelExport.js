@@ -1,6 +1,20 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
+// Defense-in-depth against spreadsheet formula injection (e.g. a field
+// containing "=IMPORTXML(...)") if this workbook is later re-opened/
+// re-imported somewhere that re-parses cell content as CSV. Mirrors
+// backend/Code.gs's escapeFormulaValue. Plain signed numbers are exempt
+// so mm tolerances/temperatures still export as real numbers.
+function esc(v) {
+  if (typeof v !== 'string') return v;
+  if (!/^[=+\-@]/.test(v)) return v;
+  if (/^[+-]?\d+(\.\d+)?$/.test(v)) return v;
+  return "'" + v;
+}
+function escRow(row) { return row.map(esc); }
+function escRows(rows) { return rows.map(escRow); }
+
 export function exportToExcel({ project, inspections, findings, ncrs, cubes }) {
   const wb = XLSX.utils.book_new();
 
@@ -18,33 +32,33 @@ export function exportToExcel({ project, inspections, findings, ncrs, cubes }) {
     r.has_finding ? 'Yes' : '', r.has_ncr ? 'Yes' : '',
     r.has_cube ? 'Yes' : '', r.has_doc ? 'Yes' : '',
   ]);
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([mastHeaders, ...mastRows]), 'Inspection Register');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([mastHeaders, ...escRows(mastRows)]), 'Inspection Register');
 
   // Findings
   if (findings && findings.length) {
     const fH = ['Finding No', 'Date', 'Linked Inspection', 'Building', 'Area', 'Element', 'Defect Type', 'Severity', 'SANS Clause', 'Description', 'Action Required', 'Responsible', 'Target Date', 'Status', 'Promoted to NCR?'];
     const fR = findings.map(r => [r.finding_no, r.date, r.linked_inspection_id, r.building, r.area, r.element_ref, r.defect_type, r.severity, r.sans_clause, r.description, r.action_required, r.responsible_party, r.target_date, r.status, r.promoted_to_ncr ? 'Yes' : '']);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([fH, ...fR]), 'Findings');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([fH, ...escRows(fR)]), 'Findings');
   }
 
   // NCRs
   if (ncrs && ncrs.length) {
     const nH = ['NCR No', 'Date Raised', 'Raised by Role', 'Raised by Name', 'Linked Inspection', 'Building', 'Area', 'Element', 'Severity', 'SANS Clause', 'Description', 'Action Required', 'Target Closeout', 'Status'];
     const nR = ncrs.map(r => [r.ncr_no, r.date_raised, r.raised_by_role, r.raised_by_name, r.linked_inspection_id, r.building, r.area, r.element_ref, r.severity, r.sans_clause, r.description, r.action_required, r.target_closeout, r.status]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([nH, ...nR]), 'NCRs');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([nH, ...escRows(nR)]), 'NCRs');
   }
 
   // Cubes
   if (cubes && cubes.length) {
     const cH = ['Cube ID', 'Cast Date', 'Building', 'Element', 'Batch No', 'Supplier', 'Spec MPa', 'Slump', '7-day Date', '7-day MPa', '28-day Date', '28-day MPa', 'Pass?', 'Cert Ref'];
     const cR = cubes.map(r => [r.cube_id, r.cast_date, r.building, r.element_location, r.batch_no, r.supplier, r.spec_mpa, r.slump_actual, r.test_date_7, r.result_7, r.test_date_28, r.result_28, r.pass_28, r.cert_ref]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH, ...cR]), 'Cubes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cH, ...escRows(cR)]), 'Cubes');
   }
 
   // Project Info
   if (project) {
     const pR = Object.entries(project).map(([k, v]) => [k, v]);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Field', 'Value'], ...pR]), 'Project Info');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Field', 'Value'], ...escRows(pR)]), 'Project Info');
   }
 
   const today = new Date().toISOString().split('T')[0];

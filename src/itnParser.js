@@ -65,11 +65,18 @@ export function parseITN(buffer, filename) {
   const m1 = filename.match(/ITN_(\d+)_/); if (m1) itnNo = m1[1];
   const m2 = filename.match(/ITN_\d+_-_(\d{4}-\d{2}-\d{2})/); if (m2) inspectionDate = m2[1];
 
+  const warnings = [];
+  if (!itnNo) warnings.push(`${filename}: couldn't detect an I&TN number from the filename — expected "ITN_<number>_...".`);
+  if (!inspectionDate) warnings.push(`${filename}: couldn't detect a date from the filename — expected "ITN_<number>_-_YYYY-MM-DD...". Rows will need a date filled in manually.`);
+
   let headerRowIdx = -1;
   for (let i = 0; i < Math.min(15, rows.length); i++) {
     if (rows[i] && rows[i].some(c => String(c || '').trim() === 'Item No')) { headerRowIdx = i; break; }
   }
-  if (headerRowIdx === -1) return [];
+  if (headerRowIdx === -1) {
+    warnings.push(`${filename}: couldn't find the "Item No" header row — no rows imported from this file.`);
+    return { records: [], warnings };
+  }
 
   const headerRow = rows[headerRowIdx] || [];
   const subHeaderRow = rows[headerRowIdx + 1] || [];
@@ -118,14 +125,17 @@ export function parseITN(buffer, filename) {
       status_reason: '', short_note: cleanText(getCol(row, 'qvr no')),
     });
   }
-  return records;
+  return { records, warnings };
 }
 
 export async function parseITNFiles(fileList) {
-  const all = [];
+  const allRecords = [];
+  const allWarnings = [];
   for (const file of fileList) {
     const buf = await file.arrayBuffer();
-    all.push(...parseITN(buf, file.name));
+    const { records, warnings } = parseITN(buf, file.name);
+    allRecords.push(...records);
+    allWarnings.push(...warnings);
   }
-  return all;
+  return { records: allRecords, warnings: allWarnings };
 }

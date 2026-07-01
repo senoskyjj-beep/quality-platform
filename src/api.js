@@ -22,9 +22,11 @@ export function clearPending() { setPending([]); }
 
 // Give every new record a stable client-side id BEFORE first send,
 // so a retried save updates the same row instead of creating a duplicate.
+// Returns a copy rather than mutating rec in place, since callers often
+// pass React state objects that must not be changed outside setState.
 function ensureId(rec) {
   if (rec && !rec.id) {
-    rec.id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    return { ...rec, id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) };
   }
   return rec;
 }
@@ -59,15 +61,23 @@ async function retryPending() {
   try {
     const pending = getPending();
     if (pending.length === 0) return;
-    const remaining = [];
+    const succeededIds = new Set();
+    const failedUpdates = new Map();
     for (const item of pending) {
-      try { item.attempts++; await rawCall(item.action, item.params); }
+      try { item.attempts++; await rawCall(item.action, item.params); succeededIds.add(item.id); }
       catch (err) {
         item.last_error = err.message;
-        remaining.push(item);
+        failedUpdates.set(item.id, item);
       }
     }
-    setPending(remaining);
+    // Merge against the queue as it stands NOW rather than overwriting with
+    // our stale snapshot — enqueue() may have added new items while this
+    // pass was awaiting network calls, and those must not be dropped.
+    const current = getPending();
+    const merged = current
+      .filter(i => !succeededIds.has(i.id))
+      .map(i => failedUpdates.get(i.id) || i);
+    setPending(merged);
   } finally { retryRunning = false; }
 }
 
