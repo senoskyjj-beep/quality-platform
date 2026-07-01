@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.js": "/quality-platform/static/js/main.787a008d.js",
+    "main.js": "/quality-platform/static/js/main.d3e109e1.js",
     "static/js/196.6f648536.chunk.js": "/quality-platform/static/js/196.6f648536.chunk.js",
-    "static/js/627.3399bdcd.chunk.js": "/quality-platform/static/js/627.3399bdcd.chunk.js",
+    "static/js/627.40d1091e.chunk.js": "/quality-platform/static/js/627.40d1091e.chunk.js",
     "static/js/241.f37dab11.chunk.js": "/quality-platform/static/js/241.f37dab11.chunk.js",
     "index.html": "/quality-platform/index.html",
-    "main.787a008d.js.map": "/quality-platform/static/js/main.787a008d.js.map",
+    "main.d3e109e1.js.map": "/quality-platform/static/js/main.d3e109e1.js.map",
     "196.6f648536.chunk.js.map": "/quality-platform/static/js/196.6f648536.chunk.js.map",
-    "627.3399bdcd.chunk.js.map": "/quality-platform/static/js/627.3399bdcd.chunk.js.map",
+    "627.40d1091e.chunk.js.map": "/quality-platform/static/js/627.40d1091e.chunk.js.map",
     "241.f37dab11.chunk.js.map": "/quality-platform/static/js/241.f37dab11.chunk.js.map"
   },
   "entrypoints": [
-    "static/js/main.787a008d.js"
+    "static/js/main.d3e109e1.js"
   ]
 }
