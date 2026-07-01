@@ -87,8 +87,20 @@ var WRITE_ACTIONS = {
   deleteInspection: true, updateInspectionStatus: true, recomputeInspectionFlags: true,
   saveFinding: true, deleteFinding: true, promoteToNCR: true,
   saveNCR: true, deleteNCR: true, saveCube: true,
-  saveDocument: true, deleteDocument: true, savePhoto: true, saveITP: true
+  saveDocument: true, deleteDocument: true, savePhoto: true, saveITP: true,
+  submitBookingRequest: true
 };
+
+// ============ Public booking-link access control ============
+// The shareable booking link (src/BookingRequestForm.js) has no login and is
+// shared over WhatsApp to anyone on site. It must never be able to reach the
+// full API surface (delete/overwrite/setup actions, PII in getSetup) — only
+// these two actions are reachable without the internal API_KEY below.
+// This key must match src/apiKey.js in the frontend, which is bundled ONLY
+// into the main app (code-split away from the public booking page) so it is
+// never shipped to anyone who only opens the booking link.
+const API_KEY = 'ec0148-qa-9f3d7a2c5e816b4f0d9a3c7e2b5f8d1a';
+var PUBLIC_ACTIONS = { ping: true, getBookingFormOptions: true, submitBookingRequest: true };
 
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
@@ -108,6 +120,10 @@ function handleRequest(e) {
     const action = params.action;
     if (!action) return jsonResponse({ ok: false, error: 'No action specified' });
 
+    if (!PUBLIC_ACTIONS[action] && params.key !== API_KEY) {
+      return jsonResponse({ ok: false, error: 'Unauthorized' });
+    }
+
     // Serialize all write actions behind a script lock
     if (WRITE_ACTIONS[action]) {
       lock = LockService.getScriptLock();
@@ -118,6 +134,8 @@ function handleRequest(e) {
     switch (action) {
       case 'ping': result = { ok: true, time: new Date().toISOString(), version: 'v2' }; break;
       case 'getSetup': result = getSetup(); break;
+      case 'getBookingFormOptions': result = getBookingFormOptions(); break;
+      case 'submitBookingRequest': result = submitBookingRequest(params.record); break;
       case 'saveSetup': result = saveSetup(params.data); break;
       case 'getAll': result = getAll(); break;
       case 'listInspections': result = listRecords('Inspections', params.filter); break;
@@ -275,7 +293,19 @@ function rowToObject(row, headers) {
   return obj;
 }
 function objectToRow(obj, headers) {
-  return headers.map(h => obj[h] !== undefined ? obj[h] : '');
+  return headers.map(h => escapeFormulaValue(obj[h] !== undefined ? obj[h] : ''));
+}
+
+// Prevents spreadsheet formula injection (e.g. =IMPORTXML(...), +HYPERLINK(...))
+// from any text field — internal or public — by forcing such values to be
+// treated as literal text instead of a formula when the sheet renders them.
+// Plain signed numbers (temperatures, mm deviations like "-5", "+12.3") are
+// left untouched so they still store as real numbers, not text.
+function escapeFormulaValue(v) {
+  if (typeof v !== 'string') return v;
+  if (!/^[=+\-@]/.test(v)) return v;
+  if (/^[+-]?\d+(\.\d+)?$/.test(v)) return v;
+  return "'" + v;
 }
 
 function listRecords(sheetName, filter) {
@@ -579,6 +609,42 @@ function getSetup() {
   const project = {};
   projRows.forEach(r => { if (r[0]) project[r[0]] = r[1]; });
   return { ok: true, setup: lists, phones, project };
+}
+
+// Restricted read for the public booking link — deliberately excludes
+// phone numbers, engineers, employer reps, and project info that getSetup()
+// returns for the internal app.
+function getBookingFormOptions() {
+  const full = getSetup();
+  return {
+    ok: true,
+    foremen: full.setup.Foremen || [],
+    areas: full.setup.Areas || [],
+    inspectionTypes: full.setup.InspectionTypes || [],
+  };
+}
+
+const BOOKING_FIELDS = ['date', 'time', 'area', 'item_description', 'inspection_type', 'foreman', 'requested_by'];
+const BOOKING_FIELD_MAX_LEN = 300;
+
+// Restricted write for the public booking link. Only ever inserts a new
+// Inspections row — the caller-supplied record can never carry an id, so it
+// can never overwrite an existing booking, finding, NCR, etc. Every field is
+// length-capped and formula-escaped since this is the one action reachable
+// with no login at all.
+function submitBookingRequest(record) {
+  if (!record || typeof record !== 'object') return { ok: false, error: 'No booking data provided' };
+  const clean = {};
+  BOOKING_FIELDS.forEach(f => {
+    const v = record[f];
+    clean[f] = typeof v === 'string' ? v.substring(0, BOOKING_FIELD_MAX_LEN) : '';
+  });
+  if (!clean.date || !clean.inspection_type || !clean.foreman) {
+    return { ok: false, error: 'Date, inspection type and foreman are required' };
+  }
+  clean.status = 'Pending';
+  clean.booking_source = 'Shareable Link';
+  return saveInspection(clean);
 }
 
 function saveSetup(data) {

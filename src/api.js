@@ -1,4 +1,5 @@
 import { SCRIPT_URL } from './config';
+import { API_KEY } from './apiKey';
 
 const PENDING_KEY = 'qa_v2_pending_sync';
 const RETRY_INTERVAL_MS = 30000;
@@ -35,7 +36,7 @@ async function rawCall(action, params = {}) {
   const res = await fetch(SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, ...params })
+    body: JSON.stringify({ action, key: API_KEY, ...params })
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();

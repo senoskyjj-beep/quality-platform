@@ -25,11 +25,14 @@ function nowTimeStr() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
-function clientId() {
-  return 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-}
 
+// Deliberately does NOT import src/apiKey.js — this page is public and
+// unauthenticated, so it may only call the two backend actions that don't
+// require the internal key (getBookingFormOptions, submitBookingRequest).
 async function rawPost(action, params) {
+  if (!SCRIPT_URL || SCRIPT_URL.startsWith('PASTE_YOUR')) {
+    throw new Error('Backend not configured yet — contact Joshua.');
+  }
   const res = await fetch(SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -138,7 +141,7 @@ const c = {
 };
 
 export default function BookingRequestForm() {
-  const [setup, setSetup] = useState({});
+  const [options, setOptions] = useState({});
   const [loadingSetup, setLoadingSetup] = useState(true);
   const [form, setForm] = useState(emptyForm());
   const [submitting, setSubmitting] = useState(false);
@@ -147,8 +150,8 @@ export default function BookingRequestForm() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    rawPost('getSetup', {})
-      .then(r => setSetup(r.setup || {}))
+    rawPost('getBookingFormOptions', {})
+      .then(r => setOptions(r || {}))
       .catch(() => {})
       .finally(() => setLoadingSetup(false));
   }, []);
@@ -164,6 +167,7 @@ export default function BookingRequestForm() {
   })();
 
   const handleSubmit = async () => {
+    if (submitting) return; // guards against a fast double-tap firing two submits
     if (!form.date || !form.inspection_type || !form.foreman) {
       setError('Please fill in the required fields: Date, Inspection Type, and Foreman.');
       return;
@@ -171,8 +175,10 @@ export default function BookingRequestForm() {
     setError('');
     setSubmitting(true);
     try {
+      // Only these fields are sent — the backend's submitBookingRequest
+      // ignores everything else and always assigns its own id, so this
+      // form can never overwrite an existing booking or record.
       const record = {
-        id: clientId(),
         date: form.date,
         time: form.time,
         area: form.area,
@@ -180,10 +186,8 @@ export default function BookingRequestForm() {
         inspection_type: form.inspection_type,
         foreman: form.foreman,
         requested_by: form.requested_by,
-        booking_source: 'Shareable Link',
-        status: 'Pending',
       };
-      await rawPost('saveInspection', { record });
+      await rawPost('submitBookingRequest', { record });
       setLastSubmitted({ ...record, structureRef });
       setSubmitted(true);
     } catch (e) {
@@ -193,10 +197,10 @@ export default function BookingRequestForm() {
     }
   };
 
-  const foremenList = Array.isArray(setup.Foremen) && setup.Foremen.length > 0 ? setup.Foremen : [];
-  const areasList = Array.isArray(setup.Areas) && setup.Areas.length > 0 ? setup.Areas : [];
-  const inspTypes = Array.isArray(setup.InspectionTypes) && setup.InspectionTypes.length > 0
-    ? setup.InspectionTypes : FALLBACK_INSPECTION_TYPES;
+  const foremenList = Array.isArray(options.foremen) && options.foremen.length > 0 ? options.foremen : [];
+  const areasList = Array.isArray(options.areas) && options.areas.length > 0 ? options.areas : [];
+  const inspTypes = Array.isArray(options.inspectionTypes) && options.inspectionTypes.length > 0
+    ? options.inspectionTypes : FALLBACK_INSPECTION_TYPES;
 
   if (submitted && lastSubmitted) {
     return (
