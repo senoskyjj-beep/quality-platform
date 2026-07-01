@@ -57,24 +57,50 @@ function timeFractionToStr(value) {
 function flag(v) { return (v === 1 || v === '1' || v === true) ? '1' : ''; }
 
 export function parseITN(buffer, filename) {
-  const wb = XLSX.read(buffer, { type: 'array', cellDates: false });
+  let wb;
+  try {
+    wb = XLSX.read(buffer, { type: 'array', cellDates: false });
+  } catch (err) {
+    const msg = String(err && err.message || err).toLowerCase();
+    const isPasswordProtected = msg.includes('password') || msg.includes('encrypt');
+    return {
+      records: [],
+      warnings: [isPasswordProtected
+        ? `${filename}: this file is password-protected — remove the password (File → Save a Copy without a password, in Excel/Numbers) and upload again.`
+        : `${filename}: couldn't open this file as a spreadsheet (${err.message || err}). It may be corrupted or not a real .xlsx file.`]
+    };
+  }
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
+  // Accepts "ITN_140_...", "ITN 140 - ...", "ITN140-...", etc. — any
+  // separator (space, underscore, dash) between "ITN" and the number.
   let itnNo = '', inspectionDate = '';
-  const m1 = filename.match(/ITN_(\d+)_/); if (m1) itnNo = m1[1];
-  const m2 = filename.match(/ITN_\d+_-_(\d{4}-\d{2}-\d{2})/); if (m2) inspectionDate = m2[1];
+  const m1 = filename.match(/ITN[\s_-]*#?(\d+)/i);
+  if (m1) itnNo = m1[1];
+
+  // Accepts a date anywhere in the filename, either "YYYY-MM-DD" or a
+  // compact "YYYYMMDD" — whatever separator surrounds it.
+  const dateDash = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+  const dateCompact = !dateDash && filename.match(/(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)/);
+  if (dateDash) inspectionDate = `${dateDash[1]}-${dateDash[2]}-${dateDash[3]}`;
+  else if (dateCompact) inspectionDate = `${dateCompact[1]}-${dateCompact[2]}-${dateCompact[3]}`;
 
   const warnings = [];
-  if (!itnNo) warnings.push(`${filename}: couldn't detect an I&TN number from the filename — expected "ITN_<number>_...".`);
-  if (!inspectionDate) warnings.push(`${filename}: couldn't detect a date from the filename — expected "ITN_<number>_-_YYYY-MM-DD...". Rows will need a date filled in manually.`);
+  if (!itnNo) warnings.push(`${filename}: couldn't detect an I&TN number from the filename — expected something like "ITN 140" or "ITN_140" in the name.`);
+  if (!inspectionDate) warnings.push(`${filename}: couldn't detect a date from the filename — expected a "YYYY-MM-DD" or "YYYYMMDD" date somewhere in the name. Rows will need a date filled in manually.`);
 
+  // Case-insensitive, tolerant of "Item No.", "Item Number", "Item #".
+  function isItemNoHeader(c) {
+    const s = String(c || '').trim().toLowerCase().replace(/\.$/, '');
+    return s === 'item no' || s === 'item number' || s === 'item #' || s === 'item no ';
+  }
   let headerRowIdx = -1;
   for (let i = 0; i < Math.min(15, rows.length); i++) {
-    if (rows[i] && rows[i].some(c => String(c || '').trim() === 'Item No')) { headerRowIdx = i; break; }
+    if (rows[i] && rows[i].some(isItemNoHeader)) { headerRowIdx = i; break; }
   }
   if (headerRowIdx === -1) {
-    warnings.push(`${filename}: couldn't find the "Item No" header row — no rows imported from this file.`);
+    warnings.push(`${filename}: couldn't find an "Item No" header row in the first 15 rows — no rows imported from this file. Check the file isn't password-protected and the column is labelled "Item No".`);
     return { records: [], warnings };
   }
 
