@@ -1,10 +1,16 @@
 {
   "files": {
-    "main.js": "/quality-platform/static/js/main.346e2fbe.js",
+    "main.js": "/quality-platform/static/js/main.f66f806f.js",
+    "static/js/196.6f648536.chunk.js": "/quality-platform/static/js/196.6f648536.chunk.js",
+    "static/js/992.09f51fb2.chunk.js": "/quality-platform/static/js/992.09f51fb2.chunk.js",
+    "static/js/241.f37dab11.chunk.js": "/quality-platform/static/js/241.f37dab11.chunk.js",
     "index.html": "/quality-platform/index.html",
-    "main.346e2fbe.js.map": "/quality-platform/static/js/main.346e2fbe.js.map"
+    "main.f66f806f.js.map": "/quality-platform/static/js/main.f66f806f.js.map",
+    "196.6f648536.chunk.js.map": "/quality-platform/static/js/196.6f648536.chunk.js.map",
+    "992.09f51fb2.chunk.js.map": "/quality-platform/static/js/992.09f51fb2.chunk.js.map",
+    "241.f37dab11.chunk.js.map": "/quality-platform/static/js/241.f37dab11.chunk.js.map"
   },
   "entrypoints": [
-    "static/js/main.346e2fbe.js"
+    "static/js/main.f66f806f.js"
   ]
 }
