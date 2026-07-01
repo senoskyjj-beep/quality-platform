@@ -20,4 +20,13 @@ load.then(({ default: Root }) => {
       <Root />
     </React.StrictMode>
   );
+}).catch(() => {
+  root.render(
+    <div style={{ padding: 24, fontFamily: 'sans-serif', textAlign: 'center' }}>
+      <p>Couldn't load the page. Check your connection and try again.</p>
+      <button onClick={() => window.location.reload()} style={{ padding: '10px 18px', fontSize: 15 }}>
+        Reload
+      </button>
+    </div>
+  );
 });
